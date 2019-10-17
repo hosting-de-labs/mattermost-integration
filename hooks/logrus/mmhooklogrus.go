@@ -5,7 +5,7 @@
 package logrus
 
 import (
-	"os"
+	"github.com/ShowMax/go-fqdn"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -70,8 +70,6 @@ func NewHook(endpoint, channel, username string, attc *Attachment, minLevel logr
 		}
 	}
 
-	var err error
-
 	if _hook == nil {
 		_hook = &mmHookLogrus{
 			endpoint: endpoint,
@@ -81,10 +79,7 @@ func NewHook(endpoint, channel, username string, attc *Attachment, minLevel logr
 			levels:   levels,
 		}
 
-		_hook.hostname, err = os.Hostname()
-		if err != nil {
-			_hook.hostname = os.Getenv("HOSTNAME")
-		}
+		_hook.hostname = fqdn.Get()
 	} else {
 		_hookLocker.Lock()
 
@@ -121,8 +116,7 @@ func (hook *mmHookLogrus) Fire(entry *logrus.Entry) (err error) {
 
 	for _, lvl := range hook.levels {
 		if lvl == entry.Level {
-			msg := NewMessage(hook.Channel(), hook.Username(), hook.Hostname(),
-				hook.Attachment(), entry)
+			msg := NewMessage(hook.Channel(), hook.Username(), hook.Hostname(), hook.Attachment(), entry)
 			_chanMsg <- msg
 			break
 		}

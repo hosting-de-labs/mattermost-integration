@@ -30,9 +30,9 @@ type Message struct {
 //
 // NewMessage will create and return new Message.
 //
-func NewMessage(channel, username, hostname string, attc *Attachment,
-	entry *logrus.Entry,
-) (msg *Message) {
+func NewMessage(channel, username, hostname string, attc *Attachment, entry *logrus.Entry) (msg *Message) {
+	entry = entry.WithField("hostname", hostname)
+
 	msg = &Message{
 		attc:       NewAttachment(attc, entry),
 		entryData:  entry.Data,
@@ -64,7 +64,6 @@ func (msg Message) getText() (str string) {
 	out = append(out, []byte(_iconsLevel[msg.entryLevel])...)
 
 	msg.generateDataKeys()
-
 	for _, k := range msg.dataKeys {
 		out = append(out, ' ')
 		out = append(out, []byte(k)...)
