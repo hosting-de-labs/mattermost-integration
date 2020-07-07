@@ -145,8 +145,8 @@ func Start() {
 		Transport: _httpTr,
 	}
 
-	_chanMsg = make(chan *Message, 30)
-	_chanSent = make(chan string, 30)
+	_chanMsg = make(chan *Message)
+	_chanSent = make(chan string)
 
 	go consumer()
 }
