@@ -31,16 +31,16 @@ type Message struct {
 // NewMessage will create and return new Message.
 //
 func NewMessage(channel, username, hostname string, attc *Attachment, entry *logrus.Entry) (msg *Message) {
-	entry = entry.WithField("hostname", hostname)
+	entry.Data["hostname"] = hostname
 
-	msg = &Message{
+	return &Message{
+		channel:    channel,
+		username:   username,
 		attc:       NewAttachment(attc, entry),
 		entryData:  entry.Data,
 		entryLevel: entry.Level,
 		entryMsg:   entry.Message,
 	}
-
-	return
 }
 
 func (msg *Message) generateDataKeys() {
@@ -64,6 +64,7 @@ func (msg Message) getText() (str string) {
 	out = append(out, []byte(_iconsLevel[msg.entryLevel])...)
 
 	msg.generateDataKeys()
+
 	for _, k := range msg.dataKeys {
 		out = append(out, ' ')
 		out = append(out, []byte(k)...)
@@ -111,7 +112,7 @@ func (msg Message) getText() (str string) {
 // _marshalJSON will convert message to JSON.
 // NOTE: unused
 //
-func (msg *Message) _marshalJSON() (out []byte, err error) {
+func (msg *Message) MarshalJSON() (out []byte, err error) {
 	str := `{`
 
 	if len(msg.channel) > 0 {
@@ -139,132 +140,6 @@ func (msg *Message) _marshalJSON() (out []byte, err error) {
 
 	str += `}`
 	out = []byte(str)
-
-	return
-}
-
-func (msg *Message) writeEntryData() (err error) {
-	msg.generateDataKeys()
-
-	for _, k := range msg.dataKeys {
-		err = msg.buf.WriteByte(' ')
-		if err != nil {
-			return
-		}
-
-		str := fmt.Sprintf("%+v", msg.entryData[k])
-
-		err = bufWriteKV(&msg.buf, k, []byte(str), '=', 0, 0)
-		if err != nil {
-			return
-		}
-	}
-
-	return
-}
-
-func (msg *Message) writeEntryMsg() (err error) {
-	if len(msg.entryMsg) == 0 {
-		return
-	}
-
-	err = msg.buf.WriteByte(' ')
-	if err != nil {
-		return
-	}
-
-	err = bufWriteKV(&msg.buf, "msg", []byte(msg.entryMsg), '=', 0, 0)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-func (msg *Message) writeText() (err error) {
-	_, err = msg.buf.WriteString(`"text":"`)
-	if err != nil {
-		return
-	}
-
-	_, err = msg.buf.WriteString(_iconsLevel[msg.entryLevel])
-	if err != nil {
-		return
-	}
-
-	err = msg.writeEntryData()
-	if err != nil {
-		return
-	}
-
-	err = msg.writeEntryMsg()
-	if err != nil {
-		return
-	}
-
-	err = msg.buf.WriteByte('"')
-
-	return
-}
-
-//
-// marshalJSON will convert message to JSON.
-//
-func (msg *Message) MarshalJSON() (out []byte, err error) {
-	msg.buf.Reset()
-
-	err = msg.buf.WriteByte('{')
-	if err != nil {
-		return
-	}
-
-	if len(msg.channel) > 0 {
-		err = bufWriteKV(&msg.buf, `"channel"`, []byte(msg.channel),
-			':', '"', '"')
-		if err != nil {
-			return
-		}
-		err = msg.buf.WriteByte(',')
-		if err != nil {
-			return
-		}
-	}
-	if len(msg.username) > 0 {
-		err = bufWriteKV(&msg.buf, `"username"`, []byte(msg.username),
-			':', '"', '"')
-	} else {
-		err = bufWriteKV(&msg.buf, `"username"`, []byte(msg.hostname),
-			':', '"', '"')
-	}
-	if err != nil {
-		return
-	}
-	err = msg.buf.WriteByte(',')
-	if err != nil {
-		return
-	}
-
-	if msg.attc != nil {
-		var attc []byte
-
-		attc, err = msg.attc.MarshalJSON()
-		if err != nil {
-			return
-		}
-
-		_, _ = msg.buf.WriteString(`"attachments":[`)
-		_, _ = msg.buf.Write(attc)
-		_ = msg.buf.WriteByte(']')
-	} else {
-		err = msg.writeText()
-	}
-
-	if err != nil {
-		return
-	}
-
-	err = msg.buf.WriteByte('}')
-	out = msg.buf.Bytes()
 
 	return
 }
